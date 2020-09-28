@@ -29,6 +29,14 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+//sema declared
+  static struct semaphore sleep_started;
+  //current thread that will sleep
+  static struct thread *sleeping_thread;
+  //final number of ticks for thread to wakeup= start+tick
+  static int64_t *wakeup_tick;
+  
+
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -89,11 +97,18 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+  sema_init (&sleep_started, 0);
   int64_t start = timer_ticks ();
+  sleeping_thread = thread_current();
+  wakeup_tick = start+ ticks;
+  sema_down(&sleep_started); //blocked resource
+  enum intr_level old_level = intr_disable ();
+  thread_block(); //blocked sleeping threads
+  intr_set_level (old_level); 
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  // ASSERT (intr_get_level () == INTR_ON);
+  // while (timer_elapsed (start) < ticks) 
+  //   thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +187,13 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  if(!wakeup_tick) return;
+
+  if(wakeup_tick<=ticks){
+    thread_unblock(sleeping_thread);
+    sema_up(&sleep_started);
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
