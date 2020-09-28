@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "lib/kernel/list.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -29,13 +30,11 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
-//sema declared
-  static struct semaphore sleep_started;
-  //current thread that will sleep
-  static struct thread *sleeping_thread;
-  //final number of ticks for thread to wakeup= start+tick
-  static int64_t *wakeup_tick;
-  
+
+
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are sleeping and blocked by semaphore. */
+static struct list sleeping_thread_list;  
 
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
@@ -92,23 +91,40 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+/* Returns true if value A is less than value B, false
+   otherwise. */
+static bool
+value_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct thread *a = list_entry (a_, struct thread, elem);
+  const struct thread *b = list_entry (b_, struct thread, elem);
+  
+  return a->wakeup_tick > b->wakeup_tick;
+}
+
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
+  //sema declared
+  struct semaphore sleep_started;
   sema_init (&sleep_started, 0);
-  int64_t start = timer_ticks ();
-  sleeping_thread = thread_current();
-  wakeup_tick = start+ ticks;
-  sema_down(&sleep_started); //blocked resource
-  enum intr_level old_level = intr_disable ();
-  thread_block(); //blocked sleeping threads
-  intr_set_level (old_level); 
 
-  // ASSERT (intr_get_level () == INTR_ON);
-  // while (timer_elapsed (start) < ticks) 
-  //   thread_yield ();
+  //current thread that will sleep
+  struct thread *sleeping_thread = thread_current ();
+  
+  //final number of ticks for thread to wakeup= start+tick
+  int64_t start = timer_ticks ();
+  int64_t wakeup_tick = start+ ticks;
+
+  sleeping_thread->sleep_started = sleep_started;
+  sleeping_thread->wakeup_tick = wakeup_tick;
+  list_insert_ordered(&sleeping_thread_list, &sleeping_thread->elem, value_less, NULL);
+
+  //blocked resource
+  sema_down(&sleep_started);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -187,13 +203,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  
+  if (list_empty (&sleeping_thread_list)) return;
 
-  if(!wakeup_tick) return;
-
-  if(wakeup_tick<=ticks){
-    thread_unblock(sleeping_thread);
-    sema_up(&sleep_started);
-  }
+  struct thread *first_sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, elem);
+  struct semaphore current_thread_semaphore = first_sleeping_thread->sleep_started;
+  int64_t minimum_wakeup_tick = first_sleeping_thread->wakeup_tick;
+  
+  while( minimum_wakeup_tick <= ticks) {
+  //pop first element  
+  list_pop_front (&sleeping_thread_list);
+  //wake up that thread 
+  sema_up(&current_thread_semaphore);
+  
+  first_sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, elem);
+  current_thread_semaphore = first_sleeping_thread->sleep_started;
+  minimum_wakeup_tick = first_sleeping_thread->wakeup_tick;
+  }   
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
