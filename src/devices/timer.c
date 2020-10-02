@@ -110,34 +110,22 @@ value_less_fun (const struct list_elem *a_, const struct list_elem *b_,
 void
 timer_sleep (int64_t ticks) 
 {
-    enum intr_level old_level;
+  enum intr_level old_level;
   //current thread that will sleep
   struct thread *sleeping_thread = thread_current ();
   old_level = intr_disable ();
-  //sema declared
- // struct semaphore sleep_started= sleeping_thread->sleep_started;
-  // struct semaphore sleep_started;
-//   sema_init (&sleep_started, 0);
+  
   //final number of ticks for thread to wakeup= start+tick
   int64_t start = timer_ticks ();
   int64_t wakeup_tick = start+ ticks;
-//  sleeping_thread->sleep_started = &sleep_started;
   sleeping_thread->wakeup_tick = wakeup_tick;
-//  printf("sfjdfjgjgjghjgjhdhjgdjhhj");
- printf("Thread inserted: %s }}}}",sleeping_thread->name);
- printf ("Timer: %"PRId64" ticks\n", ticks);
- printf ("insertimng minimum_wakeup_tick: %"PRId64" ticks\n", wakeup_tick);
-
-  list_insert_ordered(&sleeping_thread_list, &sleeping_thread->elem, value_less_fun, NULL);
- // printf("tttttttttttttttttttttttttttttttttttttt");
+  printf("Thread inserted: %s }}}}",sleeping_thread->name);
+  printf ("Timer: %"PRId64" ticks\n", ticks);
+  printf ("insertimng minimum_wakeup_tick: %"PRId64" ticks\n", wakeup_tick);
+  list_insert_ordered(&sleeping_thread_list, &sleeping_thread->sleeping_elem, value_less_fun, NULL);
   intr_set_level (old_level);
- // printf("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-  //blocked resource
-  intr_enable();
-//  intr_yield_on_return();
-  sema_down(&thread_current()->sleep_started);
- printf("abc");
-
+  intr_yield_on_return();
+  sema_down(&sleeping_thread->sleep_started);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -215,80 +203,25 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-// printf("current thread %s", thread_current()->name);
-//  thread_tick ();
-//printf("current thread %s", thread_current()->name);
-//  intr_yield_on_return();
-//printf("current thread %s", thread_current()->name);
+  thread_tick ();
+  //printf("current thread %s", thread_current()->name);
 
   if (list_empty (&sleeping_thread_list)) return;
 
-
-  struct thread *first_sleeping_thread =list_entry (list_back (&sleeping_thread_list), struct thread, elem);
- // struct semaphore *current_thread_semaphore = first_sleeping_thread->sleep_started;
-  int64_t minimum_wakeup_tick = first_sleeping_thread->wakeup_tick;
-
-//  printf("current thread %s \n", thread_current()->name);
-   while(minimum_wakeup_tick <= ticks){
- 	 printf("current thread %s \n", thread_current()->name);
-  	struct thread *thread_pop = list_entry(list_pop_back(&sleeping_thread_list),struct thread, elem);
-	 printf ("Timer: %"PRId64" ticks\n", ticks);
-	 printf ("minimum_wakeup_tick: %"PRId64" ticks\n", minimum_wakeup_tick);
- 	 sema_up(&thread_pop->sleep_started);
-          printf("%s end", thread_pop->name);
+  struct thread *sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, sleeping_elem);
+  int64_t minimum_wakeup_tick = sleeping_thread->wakeup_tick;
+  while(minimum_wakeup_tick <= ticks){
+ 	  printf("current thread %s \n", thread_current()->name);
+  	//struct thread *thread_pop = list_entry(list_pop_front(&sleeping_thread_list),struct thread, sleeping_elem);
+	  printf ("Timer: %"PRId64" ticks\n", ticks);
+	  printf ("minimum_wakeup_tick: %"PRId64" ticks\n", minimum_wakeup_tick);
+ 	  list_remove(&sleeping_thread->sleeping_elem);
+    sema_up(&sleeping_thread->sleep_started);
+    printf("%s end", sleeping_thread->name);
  	  printf("\n");
-          minimum_wakeup_tick = first_sleeping_thread->wakeup_tick;
-
+    sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, sleeping_elem);
+    minimum_wakeup_tick = sleeping_thread->wakeup_tick;
 	}
-   
- thread_tick ();
-
-
-
-
-
-
-
-/*
-
-
-
-
-  if( minimum_wakeup_tick <= ticks) {
-  printf("while loop");
-  struct list_elem *front_sleep = list_front (&sleeping_thread_list);
-//   if(front_sleep==NULL) break;
- struct list_elem *e;
- for(e = list_begin(&sleeping_thread_list); e != list_end (&sleeping_thread_list); e = e->next){
-        if(e==NULL){
-	break;
-     }
-	struct thread *temp =list_entry (e, struct thread, elem);
-         printf("[list element: %s ] ", temp->name);
-	} 
-  //pop first element  
-   struct list_elem *front_sleep_ = list_pop_front (&sleeping_thread_list); 
-   struct thread *temp1 =list_entry (front_sleep_, struct thread, elem);
-    printf("Removed thread:   %s ", temp1->name);
-    // list_remove(front_sleep);
-  for(e = list_begin(&sleeping_thread_list); e != list_end (&sleeping_thread_list); e = e->next){
-        if(e==NULL){
-        break;
-     }
-        struct thread *temp =list_entry (e, struct thread, elem);
-         printf("[ after pop: %s ] ", temp->name);
-        }
-  
-
-  printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-  //wake up that thread 
-  sema_up(current_thread_semaphore);
-//  first_sleeping_thread =list_entry (list_front(&sleeping_thread_list), struct thread, elem);
-//  printf("replaced :: %s ::",first_sleeping_thread->name);
-//  current_thread_semaphore = first_sleeping_thread->sleep_started;
- // minimum_wakeup_tick = first_sleeping_thread->wakeup_tick;
- printf("----------------------------------------------------------------");
-  }*/   
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
