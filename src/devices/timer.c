@@ -119,13 +119,8 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
   int64_t wakeup_tick = start+ ticks;
   sleeping_thread->wakeup_tick = wakeup_tick;
-  printf("Thread inserted: %s }}}}",sleeping_thread->name);
-  printf ("Time to sleep : %"PRId64" ticks\n", ticks);
-  printf ("start: %"PRId64" ticks\n", start);
-  printf ("insertimng minimum_wakeup_tick: %"PRId64" ticks\n", wakeup_tick);
   list_insert_ordered(&sleeping_thread_list, &sleeping_thread->sleeping_elem, value_less_fun, NULL);
   intr_set_level (old_level);
-  //intr_yield_on_return();
   sema_down(&sleeping_thread->sleep_started);
 }
 
@@ -207,27 +202,18 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
 
   if (list_empty (&sleeping_thread_list)) return;
-  //printf("current thread %s\n", thread_current()->name);
   struct list_elem *sleeping_thread_elem =list_front (&sleeping_thread_list);
   
   while(sleeping_thread_elem != list_end(&sleeping_thread_list)){
 
     struct thread *sleeping_thread =list_entry (sleeping_thread_elem, struct thread, sleeping_elem);
     int64_t minimum_wakeup_tick = sleeping_thread->wakeup_tick;
- 	  //printf("current thread %s \n", thread_current()->name);
-  	//struct thread *thread_pop = list_entry(list_pop_front(&sleeping_thread_list),struct thread, sleeping_elem);
-	  //printf ("Timer: %"PRId64" ticks\n", ticks);
-	  //printf ("minimum_wakeup_tick: %"PRId64" ticks\n", minimum_wakeup_tick);
+ 	 
     if(sleeping_thread->wakeup_tick <= timer_ticks()) {
  	    list_remove(&sleeping_thread->sleeping_elem);
       sema_up(&sleeping_thread->sleep_started);
     }
     sleeping_thread_elem = list_next(sleeping_thread_elem);
-    //printf("%s end", sleeping_thread->name);
- 	  //printf("\n");
-	/*if (list_empty (&sleeping_thread_list)) break;
-    sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, sleeping_elem);
-    minimum_wakeup_tick = sleeping_thread->wakeup_tick;*/
 	}
 }
 
