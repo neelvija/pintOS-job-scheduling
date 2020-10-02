@@ -101,7 +101,7 @@ value_less_fun (const struct list_elem *a_, const struct list_elem *b_,
   const struct thread *a = list_entry (a_, struct thread, elem);
   const struct thread *b = list_entry (b_, struct thread, elem);
   
-  return a->wakeup_tick > b->wakeup_tick;
+  return a->wakeup_tick < b->wakeup_tick;
 
 }
 
@@ -120,11 +120,12 @@ timer_sleep (int64_t ticks)
   int64_t wakeup_tick = start+ ticks;
   sleeping_thread->wakeup_tick = wakeup_tick;
   printf("Thread inserted: %s }}}}",sleeping_thread->name);
-  printf ("Timer: %"PRId64" ticks\n", ticks);
+  printf ("Time to sleep : %"PRId64" ticks\n", ticks);
+  printf ("start: %"PRId64" ticks\n", start);
   printf ("insertimng minimum_wakeup_tick: %"PRId64" ticks\n", wakeup_tick);
   list_insert_ordered(&sleeping_thread_list, &sleeping_thread->sleeping_elem, value_less_fun, NULL);
   intr_set_level (old_level);
-  intr_yield_on_return();
+  //intr_yield_on_return();
   sema_down(&sleeping_thread->sleep_started);
 }
 
@@ -204,11 +205,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  //printf("current thread %s", thread_current()->name);
 
   if (list_empty (&sleeping_thread_list)) return;
-
-  struct thread *sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, sleeping_elem);
+  printf("current thread %s\n", thread_current()->name);
+  struct thread *sleeping_thread =list_entry (list_back (&sleeping_thread_list), struct thread, sleeping_elem);
   int64_t minimum_wakeup_tick = sleeping_thread->wakeup_tick;
   while(minimum_wakeup_tick <= ticks){
  	  printf("current thread %s \n", thread_current()->name);
@@ -219,7 +219,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
     sema_up(&sleeping_thread->sleep_started);
     printf("%s end", sleeping_thread->name);
  	  printf("\n");
-    sleeping_thread =list_entry (list_front (&sleeping_thread_list), struct thread, sleeping_elem);
+	if (list_empty (&sleeping_thread_list)) break;
+    sleeping_thread =list_entry (list_back (&sleeping_thread_list), struct thread, sleeping_elem);
     minimum_wakeup_tick = sleeping_thread->wakeup_tick;
 	}
 }
