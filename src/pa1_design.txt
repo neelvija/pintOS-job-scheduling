@@ -83,6 +83,10 @@ FirstName LastName <email@domain.example>
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+Citation: 
+https://uchicago-cs.github.io/mpcs52030/p0.html
+https://web.stanford.edu/class/cs140/projects/pintos/pintos_1.html
+
 			  ADVANCED SCHEDULER
 			  ==================
 
