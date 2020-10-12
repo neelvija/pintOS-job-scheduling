@@ -91,10 +91,12 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
+  printf("1");
   list_init (&ready_list);
   list_init (&all_list);
+  printf("2");
   init_lock_list();
-
+  printf("3");
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);

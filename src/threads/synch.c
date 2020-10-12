@@ -35,8 +35,12 @@
 
 static struct list all_locks_list;
 
-void init_lock_list(){
+void 
+init_lock_list()
+{
+  printf("2.1");
   list_init(&all_locks_list);
+  printf("2.2");
 }
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
@@ -203,7 +207,9 @@ lock_init (struct lock *lock)
 
 
 //sort all waiters list in all locks.
-void resort_all_lock_list(){
+void 
+resort_all_lock_list()
+{
 
   if (list_empty (&all_locks_list)) return;
   struct list_elem *current_lock_elem =list_front (&all_locks_list);
