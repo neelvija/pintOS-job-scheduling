@@ -70,7 +70,7 @@ value_less (const struct list_elem *a_, const struct list_elem *b_,
   const struct thread *a = list_entry (a_, struct thread, elem);
   const struct thread *b = list_entry (b_, struct thread, elem);
   
-  return a->priority > b->priority;
+  return a->priority < b->priority;
 }
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
    to become positive and then atomically decrements it.
@@ -90,7 +90,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_insert_ordered(&sema->waiters, &thread_current ()->elem, *value_less,NULL);
+      list_insert_ordered(&sema->waiters, &thread_current ()->elem, *value_less,0);
       thread_block ();
     }
   sema->value--;
@@ -136,8 +136,8 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
-    list_sort(&sema->waiters,*value_less,NULL);
-    struct thread *thread_to_unblock = list_entry (list_pop_front (&sema->waiters),struct thread, elem);
+    list_sort(&sema->waiters,*value_less,0);
+    struct thread *thread_to_unblock = list_entry (list_pop_back (&sema->waiters),struct thread, elem);
     thread_to_unblock->requested_lock = NULL;
     thread_unblock (thread_to_unblock);  
   }
@@ -315,7 +315,6 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
  
-  printf("holder and current check : %d",lock->holder==thread_current());
   struct thread *current_thread = thread_current(); 
   struct semaphore *current_semaphore = &lock->semaphore;
   list_remove(&lock->lock_elem);
@@ -323,13 +322,15 @@ lock_release (struct lock *lock)
   if(list_empty(&current_thread->acquired_lock_list)) {
     thread_set_donor_priority(lock->holder->old_priority,lock->holder);
     lock->highest_priority = lock->holder->old_priority;
-  } else {   
-    struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
+  } else {  
+	printf("in else block list not empty"); 
+    struct lock  *max_lock_elem = list_entry(list_front(&current_thread->acquired_lock_list),struct lock,lock_elem);
     thread_set_donor_priority(max_lock_elem->highest_priority,lock->holder);
     lock->highest_priority = PRI_MIN;
   }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -339,7 +340,10 @@ bool
 lock_held_by_current_thread (const struct lock *lock) 
 {
   ASSERT (lock != NULL);
-
+  //bool result = (lock->holder == thread_current ())? true : false;
+  //if(!result) {
+  //  printf("[%s : %s]",lock->holder->name, thread_current()->name );
+  //}
   return lock->holder == thread_current ();
 }
 
