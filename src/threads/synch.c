@@ -251,12 +251,12 @@ lock_acquire (struct lock *lock)
   }
   if(lock->holder != NULL){
     if(lock->holder->priority < current_thread->priority ){
-      thread_set_donor_priority(current_thread->priority,&lock->holder);
+      thread_set_donor_priority(current_thread->priority,lock->holder);
       lock->highest_priority = current_thread->priority;
     }
     if(lock->holder->requested_lock!=NULL) {
       if(lock->holder->requested_lock->holder->priority<current_thread->priority) {
-        thread_set_donor_priority(current_thread->priority,&lock->holder->requested_lock->holder);
+        thread_set_donor_priority(current_thread->priority,lock->holder->requested_lock->holder);
         lock->holder->requested_lock->highest_priority = current_thread->priority;
       }
     }
@@ -301,7 +301,7 @@ max_lock_priority (const struct list_elem *a_, const struct list_elem *b_,
   const struct lock *a = list_entry (a_, struct lock, lock_elem);
   const struct lock *b = list_entry (b_, struct lock, lock_elem);
   
-  return a->highest_priority > b->highest_priority;
+  return a->highest_priority < b->highest_priority;
 }
 
 /* Releases LOCK, which must be owned by the current thread.
@@ -315,6 +315,7 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
  
+  printf("holder and current check : %d",lock->holder==thread_current());
   struct thread *current_thread = thread_current(); 
   struct semaphore *current_semaphore = &lock->semaphore;
   list_remove(&lock->lock_elem);
