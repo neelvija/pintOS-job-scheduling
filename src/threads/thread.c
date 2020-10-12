@@ -354,9 +354,9 @@ thread_set_priority (int new_priority)
   thread_yield ();
 }
 //donee thread priority update
-void thread_set_donor_priority(int priority, struct thread *t){
-    t->priority = priority;
-    thread_yield ();
+void thread_set_donor_priority(int new_priority, struct thread *t){
+  t->priority = new_priority;
+  thread_yield ();
 }
 
 /* Returns the current thread's priority. */
@@ -482,10 +482,12 @@ init_thread (struct thread *t, const char *name, int priority)
  
   sema_init (&t->sleep_started, 0);
   list_init(&t->acquired_lock_list);
+  t->requested_lock = NULL;
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->old_priority = priority;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
