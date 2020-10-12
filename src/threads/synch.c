@@ -34,6 +34,7 @@
 
 
 static struct list all_locks_list;
+static bool all_locks_list_initialised = false;
 
 void 
 init_lock_list()
@@ -202,6 +203,10 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  if(!all_locks_list_initialised) {
+   list_init(&all_locks_list); 
+   all_locks_list_initialised = true;
+  }
   list_push_back(&all_locks_list, &lock->lock_elem);
 }
 
@@ -237,6 +242,7 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+  
   struct thread *current_thread = thread_current();
   if(lock->holder != NULL){
      if(lock->holder->priority < current_thread->priority ){
@@ -252,6 +258,7 @@ lock_acquire (struct lock *lock)
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  //list_push_back(&all_locks_list, &lock->lock_elem);
   list_push_back(&current_thread->acquired_lock_list, &lock->lock_elem_acquired);
 }
 
@@ -289,6 +296,7 @@ lock_release (struct lock *lock)
   struct semaphore *current_semaphore = &lock->semaphore;
   list_sort(&current_semaphore->waiters, *value_less,NULL);
   list_remove(&lock->lock_elem_acquired);
+  //list_remove(&lock->lock_elem);
   if(list_empty(&thread_current()->acquired_lock_list)) {
     lock->holder->priority_changed = false;
     lock->holder->priority = lock->holder->old_priority;
