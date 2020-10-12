@@ -93,6 +93,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  init_lock_list();
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -353,6 +354,11 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
   thread_yield ();
 }
+//donee thread priority update
+void thread_set_donor_priority(int priority, struct thread *t){
+    t->priority = priority;
+    thread_yield ();
+}
 
 /* Returns the current thread's priority. */
 int
@@ -476,6 +482,7 @@ init_thread (struct thread *t, const char *name, int priority)
   memset (t, 0, sizeof *t);
  
   sema_init (&t->sleep_started, 0);
+  list_init(&t->acquired_lock_list);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;

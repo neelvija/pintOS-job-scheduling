@@ -89,10 +89,15 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int old_priority;                   /*old priority for priority inversion */
+    bool priority_changed;              /*check if orignal priority is changed*/ 
     struct list_elem allelem;           /* List element for all threads list. */
     struct semaphore sleep_started;     /* semaphore for sleeping thread */
     int64_t wakeup_tick;                /* wake up time for sleeping thread */
     struct list_elem sleeping_elem;     /* elem for sleeping list */
+    struct list acquired_lock_list;     // list of acquired locks
+    
+    
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -136,10 +141,12 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void thread_set_donor_priority(int priority, struct thread *t);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
 
 #endif /* threads/thread.h */
