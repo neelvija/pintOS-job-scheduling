@@ -242,9 +242,8 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  
   struct thread *current_thread = thread_current();
-  if(lock->holder != NULL){
+ if(lock->holder != NULL){
      if(lock->holder->priority < current_thread->priority ){
       if(!lock->holder->priority_changed){
          lock->holder->old_priority = lock->holder->priority; 
@@ -293,16 +292,29 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+ // if(is_thread(running_thread())){
+  
+  printf("[1 : %s]", thread_current()->name);
+  ASSERT (is_thread(running_thread()));
+//  printf("[2 : %s]",running_thread()->name);
+  
   struct semaphore *current_semaphore = &lock->semaphore;
-  list_sort(&current_semaphore->waiters, *value_less,NULL);
+//  list_sort(&current_semaphore->waiters, *value_less,NULL);
   list_remove(&lock->lock_elem_acquired);
   //list_remove(&lock->lock_elem);
-  if(list_empty(&thread_current()->acquired_lock_list)) {
+ 
+  printf("[3 : %s]", thread_current()->name);
+  printf("9999999999999999999999999999999");
+  struct thread *current_thread = thread_current(); 
+  printf("+++++++++++++++++++++++++++++++++++++++"); 
+  if(list_empty(&current_thread->acquired_lock_list)) {
     lock->holder->priority_changed = false;
     lock->holder->priority = lock->holder->old_priority;
   } else {
+   
+  printf("--------------");
     int highest_priority = 0;
-    struct thread *current_thread = thread_current();
+  printf("===============================================================");
     struct list acq_list = current_thread->acquired_lock_list;
     struct list_elem *current_lock_elem =list_front (&acq_list);
     while(current_lock_elem != list_end(&acq_list)){
@@ -318,6 +330,7 @@ lock_release (struct lock *lock)
     }
     lock->holder->priority = highest_priority;
   }
+// }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
