@@ -26,7 +26,6 @@ test_priority_donate_one (void)
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
 
-  printf("@@@@@@@@@@ %d", thread_get_priority());
   /* Make sure our priority is the default. */
   ASSERT (thread_get_priority () == PRI_DEFAULT);
 

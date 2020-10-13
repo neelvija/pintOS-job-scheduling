@@ -265,9 +265,7 @@ lock_acquire (struct lock *lock)
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
   current_thread->requested_lock = NULL;
-  if(lock->highest_priority == PRI_MIN) {
-    lock->highest_priority = thread_current()->priority;
-  }
+  lock->highest_priority = thread_current()->priority;
   list_push_back(&current_thread->acquired_lock_list, &lock->lock_elem);
 }
 
@@ -301,7 +299,7 @@ max_lock_priority (const struct list_elem *a_, const struct list_elem *b_,
   const struct lock *a = list_entry (a_, struct lock, lock_elem);
   const struct lock *b = list_entry (b_, struct lock, lock_elem);
   
-  return a->highest_priority < b->highest_priority;
+  return a->highest_priority > b->highest_priority;
 }
 
 /* Releases LOCK, which must be owned by the current thread.
@@ -316,18 +314,16 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
  
   struct thread *current_thread = thread_current(); 
-  struct semaphore *current_semaphore = &lock->semaphore;
   list_remove(&lock->lock_elem);
+  lock->holder = NULL;
   sema_up(&lock->semaphore); 
   if(list_empty(&current_thread->acquired_lock_list)) {
-    thread_set_donor_priority(lock->holder->old_priority,lock->holder);
-    lock->highest_priority = lock->holder->old_priority;
-  }/* else {  
-    struct lock  *max_lock_elem = list_entry(list_front(&current_thread->acquired_lock_list),struct lock,lock_elem);
-    thread_set_donor_priority(max_lock_elem->highest_priority,lock->holder);
-    lock->highest_priority = PRI_MIN;
-  }*/
-  lock->holder = NULL;
+    thread_set_donor_priority(current_thread->old_priority,current_thread);
+  } else {  
+    struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
+    thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
+  }
+  //lock->holder = NULL;
   //sema_up (&lock->semaphore);
   //thread_yield();
 }
