@@ -318,6 +318,7 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   sema_up(&lock->semaphore); 
   if(list_empty(&current_thread->acquired_lock_list)) {
+    //current_thread->priority_changed = false;
     thread_set_donor_priority(current_thread->old_priority,current_thread);
   } else {  
     struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
