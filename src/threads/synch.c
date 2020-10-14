@@ -90,7 +90,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_push_back(&sema->waiters, &thread_current ()->elem);
+      list_insert_ordered(&sema->waiters, &thread_current ()->elem,value_less,NULL);
       thread_block ();
     }
   sema->value--;
@@ -318,9 +318,9 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   sema_up(&lock->semaphore); 
   if(list_empty(&current_thread->acquired_lock_list)) {
-    //current_thread->priority_changed = false;
     thread_set_donor_priority(current_thread->old_priority,current_thread);
-  } else {  
+    current_thread->priority_changed = false;
+ } else {  
     struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
     thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
   }

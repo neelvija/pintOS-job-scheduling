@@ -322,8 +322,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread){ 
+    list_sort(&ready_list,value_less,NULL);
     list_insert_ordered(&ready_list, &cur->elem, value_less, NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -350,12 +352,12 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  //if(!thread_current()->priority_changed) { 
-    //thread_current()->priority = new_priority;
-  //} else {
+  if(!thread_current()->priority_changed) { 
+    thread_current()->priority = new_priority;
+  } else {
     thread_current ()->old_priority = new_priority;
-  //}
-  thread_yield ();
+  }
+ thread_yield();
 }
 //donee thread priority update
 void thread_set_donor_priority(int new_priority, struct thread *t){
@@ -363,7 +365,7 @@ void thread_set_donor_priority(int new_priority, struct thread *t){
     t->priority_changed = true;
   }
   t->priority = new_priority;
-  thread_yield ();
+  thread_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -526,9 +528,9 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
+  else{
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
-
+  }
   
 }
 
