@@ -350,11 +350,18 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  if(thread_current()->priority_changed) { 
+    thread_current()->old_priority = new_priority;
+  } else {
+    thread_current ()->priority = new_priority;
+  }
   thread_yield ();
 }
 //donee thread priority update
 void thread_set_donor_priority(int new_priority, struct thread *t){
+  if(!t->priority_changed) {
+    t->priority_changed = true;
+  }
   t->priority = new_priority;
   thread_yield ();
 }
@@ -488,6 +495,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->old_priority = priority;
+  t->priority_changed = false;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
