@@ -352,7 +352,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  if(!thread_current()->priority_changed) { 
+  if(thread_current()->priority_changed==false) { 
     thread_current()->priority = new_priority;
   } else {
     thread_current ()->old_priority = new_priority;
@@ -361,9 +361,10 @@ thread_set_priority (int new_priority)
 }
 //donee thread priority update
 void thread_set_donor_priority(int new_priority, struct thread *t){
-  if(!t->priority_changed) {
+  if(t->priority_changed==false) {
     t->priority_changed = true;
-  }
+    t->old_priority = t->priority;  
+}
   t->priority = new_priority;
   thread_yield();
 }
@@ -489,15 +490,15 @@ init_thread (struct thread *t, const char *name, int priority)
 
   memset (t, 0, sizeof *t);
  
-  sema_init (&t->sleep_started, 0);
-  list_init(&t->acquired_lock_list);
-  t->requested_lock = NULL;
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->old_priority = priority;
   t->priority_changed = false;
+  t->requested_lock = NULL;
+  sema_init (&t->sleep_started, 0);
+  list_init(&t->acquired_lock_list);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();

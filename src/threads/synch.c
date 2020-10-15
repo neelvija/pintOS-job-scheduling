@@ -205,7 +205,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
-  lock->highest_priority = PRI_MIN;
+  //lock->highest_priority = PRI_MIN;
   // if(!all_locks_list_initialised) {
   //  list_init(&all_locks_list); 
   //  all_locks_list_initialised = true;
@@ -246,9 +246,9 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *current_thread = thread_current();
-  if(lock->holder == NULL) {
-    lock->highest_priority = current_thread->priority;
-  }
+  //if(lock->holder == NULL) {
+  //  lock->highest_priority = current_thread->priority;
+  //}
   if(lock->holder != NULL){
     if(lock->holder->priority < current_thread->priority ){
       thread_set_donor_priority(current_thread->priority,lock->holder);
@@ -348,7 +348,19 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;
   };
+/* Returns true if value A is less than value B, false
+   otherwise. */
+static bool
+max_semaphore_elem_priority (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED)
+{
+  const struct semaphore_elem *a = list_entry (a_, struct semaphore_elem, elem);
+  const struct semaphore_elem *b = list_entry (b_, struct semaphore_elem, elem);
+
+  return a->priority > b->priority;
+}
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -390,9 +402,9 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
-  
+  waiter.priority = thread_current()->priority;
   sema_init (&waiter.semaphore, 0);
-  list_insert_ordered (&cond->waiters, &waiter.elem,*value_less,NULL);
+  list_insert_ordered (&cond->waiters, &waiter.elem,*max_semaphore_elem_priority,NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
