@@ -73,7 +73,7 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-static int load_avg;
+static fixed_point_t load_avg;
 
 bool isMlfqs(void) {
   return thread_mlfqs;
@@ -128,7 +128,9 @@ thread_start (void)
 void
 calculate_load_avg(void) {
   int number_of_ready_threads = list_size(&ready_list)+1;
-  load_avg = fix_round(fix_add(fix_div(fix_mul(fix_int(load_avg),fix_int(59)), fix_int(60)),fix_div(fix_int(number_of_ready_threads), fix_int(60))));
+  fixed_point_t prev_load = load_avg;
+  load_avg = fix_add(fix_unscale(fix_scale(load_avg,59), 60),fix_unscale(fix_int(number_of_ready_threads), 60));
+  printf("prev load : %d , new : %d,ready_list : %d\n",fix_round(prev_load),fix_round(load_avg),number_of_ready_threads);
 }
 
 void
@@ -139,11 +141,11 @@ calculate_recent_cpu(void) {
   while(thread_allelem != list_end(&all_list)){
 
     struct thread *all_list_thread =list_entry (thread_allelem, struct thread, allelem);
-    int previous_recent_cpu = all_list_thread->recent_cpu;
+    fixed_point_t previous_recent_cpu = all_list_thread->recent_cpu;
     int nice_value = all_list_thread->nice;
- 	 
-    int new_recent_cpu = fix_round(fix_add(fix_mul(fix_div(fix_mul(fix_int(2),fix_int(load_avg)),fix_add(fix_mul(fix_int(2),fix_int(load_avg)),fix_int(1))),fix_int(previous_recent_cpu)),fix_int(nice_value)));
-
+ 	  
+    fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_div(fix_scale(load_avg,2),fix_add(fix_scale(load_avg,2),fix_int(1))),previous_recent_cpu),fix_int(nice_value));
+    printf("prev : %d , new : %d , nice : %d",fix_round(previous_recent_cpu),fix_round(new_recent_cpu),nice_value);
     all_list_thread->recent_cpu = new_recent_cpu;
     
     thread_allelem = list_next(thread_allelem);
@@ -153,7 +155,7 @@ calculate_recent_cpu(void) {
 void
 recalculate_thread_priority(struct thread *t) {
   
-  int new_priority = fix_trunc(fix_sub(fix_sub(fix_int(PRI_MAX),fix_div(fix_int(t->recent_cpu),fix_int(4))),fix_mul(fix_int(t->nice),fix_int(2))));
+  int new_priority = fix_trunc(fix_sub(fix_sub(fix_int(PRI_MAX),fix_unscale(t->recent_cpu,4)),fix_int(t->nice*2)));
   if(new_priority < PRI_MIN) new_priority = PRI_MIN;
   if(new_priority > PRI_MAX) new_priority = PRI_MAX;
   int previous_prio = t->priority;
@@ -182,7 +184,7 @@ thread_tick (void)
 
   if(thread_mlfqs) {
     if(t!=idle_thread){
-      t->recent_cpu = t->recent_cpu+1;
+      t->recent_cpu = fix_add(t->recent_cpu,fix_int(1));
     }
     if(timer_ticks () % TIMER_FREQ == 0) {
       enum intr_level old_level;
@@ -457,7 +459,7 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  int load_avg_to_return = fix_round(fix_mul(fix_int(load_avg),fix_int(100)));
+  int load_avg_to_return = fix_round(fix_scale(load_avg,100));
   return load_avg_to_return;
 }
 
@@ -465,7 +467,7 @@ thread_get_load_avg (void)
 int
 thread_get_recent_cpu (void) 
 {
-  int recent_cpu_to_return = fix_round(fix_mul(fix_int(thread_current()->recent_cpu),fix_int(100)));
+  int recent_cpu_to_return = fix_round(fix_scale(thread_current()->recent_cpu,100));
   return recent_cpu_to_return;
 }
 

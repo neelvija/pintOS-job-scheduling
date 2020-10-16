@@ -5,6 +5,8 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include "fixedpoint.h"
+
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -99,7 +101,7 @@ struct thread
     struct lock *requested_lock;
     
     int nice;
-    int recent_cpu;
+    fixed_point_t recent_cpu;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
