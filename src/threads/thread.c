@@ -96,7 +96,7 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-  load_avg = 0; //initializes load_avg tp 0 on boot up 
+  //load_avg = 0; //initializes load_avg tp 0 on boot up 
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -131,6 +131,7 @@ calculate_load_avg(void) {
   fixed_point_t prev_load = load_avg;
   load_avg = fix_add(fix_unscale(fix_scale(load_avg,59), 60),fix_unscale(fix_int(number_of_ready_threads), 60));
   printf("prev load : %d , new : %d,ready_list : %d\n",fix_round(prev_load),fix_round(load_avg),number_of_ready_threads);
+
 }
 
 void
@@ -143,7 +144,7 @@ calculate_recent_cpu(void) {
     struct thread *all_list_thread =list_entry (thread_allelem, struct thread, allelem);
     fixed_point_t previous_recent_cpu = all_list_thread->recent_cpu;
     int nice_value = all_list_thread->nice;
- 	  
+
     fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_div(fix_scale(load_avg,2),fix_add(fix_scale(load_avg,2),fix_int(1))),previous_recent_cpu),fix_int(nice_value));
     printf("prev : %d , new : %d , nice : %d",fix_round(previous_recent_cpu),fix_round(new_recent_cpu),nice_value);
     all_list_thread->recent_cpu = new_recent_cpu;
@@ -161,7 +162,7 @@ recalculate_thread_priority(struct thread *t) {
   int previous_prio = t->priority;
   t->priority = new_priority;
   //if(new_priority<previous_prio) {
-  //  thread_yield();
+    //intr_yield_on_return ();
   //}
 }
 
@@ -189,8 +190,8 @@ thread_tick (void)
     if(timer_ticks () % TIMER_FREQ == 0) {
       enum intr_level old_level;
       //ASSERT (!intr_context ());
-      old_level = intr_disable ();
       calculate_load_avg();
+      old_level = intr_disable ();
       calculate_recent_cpu();
       intr_set_level(old_level);
     }
@@ -264,6 +265,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  //schedule();
   thread_yield();
   return tid;
 }
@@ -561,8 +563,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->old_priority = priority;
   t->priority_changed = false;
   t->requested_lock = NULL;
-  t->nice = 0;
-  t->recent_cpu = 0;
+  //t->nice = 0;
+  //t->recent_cpu = 0;
   sema_init (&t->sleep_started, 0);
   list_init(&t->acquired_lock_list);
   t->magic = THREAD_MAGIC;
