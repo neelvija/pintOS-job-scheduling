@@ -75,6 +75,10 @@ static tid_t allocate_tid (void);
 
 static int load_avg;
 
+bool isMlfqs(void) {
+  return thread_mlfqs;
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -161,9 +165,9 @@ recalculate_thread_priority(struct thread *t) {
   if(new_priority > PRI_MAX) new_priority = PRI_MAX;
   int previous_prio = t->priority;
   t->priority = new_priority;
-  if(new_priority<previous_prio) {
-    thread_yield();
-  }
+  //if(new_priority<previous_prio) {
+  //  thread_yield();
+  //}
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -189,7 +193,7 @@ thread_tick (void)
     }
     if(timer_ticks () % TIMER_FREQ == 0) {
       enum intr_level old_level;
-      ASSERT (!intr_context ());
+      //ASSERT (!intr_context ());
       old_level = intr_disable ();
       calculate_load_avg();
       calculate_recent_cpu();
