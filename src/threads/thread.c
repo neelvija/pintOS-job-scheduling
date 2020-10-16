@@ -130,7 +130,6 @@ calculate_load_avg(void) {
   int number_of_ready_threads = list_size(&ready_list)+1;
   fixed_point_t prev_load = load_avg;
   load_avg = fix_add(fix_unscale(fix_scale(load_avg,59), 60),fix_unscale(fix_int(number_of_ready_threads), 60));
-  printf("prev load : %d , new : %d,ready_list : %d\n",fix_round(prev_load),fix_round(load_avg),number_of_ready_threads);
 
 }
 
@@ -146,7 +145,6 @@ calculate_recent_cpu(void) {
     int nice_value = all_list_thread->nice;
 
     fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_div(fix_scale(load_avg,2),fix_add(fix_scale(load_avg,2),fix_int(1))),previous_recent_cpu),fix_int(nice_value));
-    printf("prev : %d , new : %d , nice : %d",fix_round(previous_recent_cpu),fix_round(new_recent_cpu),nice_value);
     all_list_thread->recent_cpu = new_recent_cpu;
     
     thread_allelem = list_next(thread_allelem);
