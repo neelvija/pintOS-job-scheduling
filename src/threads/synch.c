@@ -249,16 +249,27 @@ lock_acquire (struct lock *lock)
   //if(lock->holder == NULL) {
   //  lock->highest_priority = current_thread->priority;
   //}
-  if(lock->holder != NULL){
-    if(lock->holder->priority < current_thread->priority ){
-      thread_set_donor_priority(current_thread->priority,lock->holder);
-      lock->highest_priority = current_thread->priority;
-    }
-    if(lock->holder->requested_lock!=NULL) {
-      if(lock->holder->requested_lock->holder->priority<current_thread->priority) {
-        thread_set_donor_priority(current_thread->priority,lock->holder->requested_lock->holder);
-        lock->holder->requested_lock->highest_priority = current_thread->priority;
+  struct lock *current_lock = lock;
+  //int i = 0;
+  for(int i=0;i<8;i++){
+    if(current_lock->holder != NULL){
+      if(current_lock->holder->priority < current_thread->priority ){
+        thread_set_donor_priority(current_thread->priority,current_lock->holder);
+        current_lock->highest_priority = current_thread->priority;
       }
+      if(current_lock->holder->requested_lock!=NULL) {
+        current_lock = current_lock->holder->requested_lock;
+      } else {
+        break;
+      }
+      // if(lock->holder->requested_lock!=NULL) {
+      //   if(lock->holder->requested_lock->holder->priority<current_thread->priority) {
+      //     thread_set_donor_priority(current_thread->priority,lock->holder->requested_lock->holder);
+      //     lock->holder->requested_lock->highest_priority = current_thread->priority;
+      //   }
+      // }
+    } else {
+      break;
     }
   }
   current_thread->requested_lock = lock;
