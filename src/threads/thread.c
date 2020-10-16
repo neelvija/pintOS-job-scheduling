@@ -127,11 +127,8 @@ thread_start (void)
 
 void
 calculate_load_avg(void) {
-  fix_round(fix_mul(fix_int(load_avg),fix_int(100)));
-  int a= fix_round(fix_div(fix_mul(fix_int(load_avg),fix_int(59)), fix_int(60)));
   int number_of_ready_threads = list_size(&ready_list)+1;
-  int b= fix_round(fix_div(fix_int(number_of_ready_threads), fix_int(60)));
-  load_avg = fix_round(fix_add(fix_int(a),fix_int(b)));
+  load_avg = fix_round(fix_add(fix_div(fix_mul(fix_int(load_avg),fix_int(59)), fix_int(60)),fix_div(fix_int(number_of_ready_threads), fix_int(60))));
 }
 
 void
@@ -145,13 +142,9 @@ calculate_recent_cpu(void) {
     int previous_recent_cpu = all_list_thread->recent_cpu;
     int nice_value = all_list_thread->nice;
  	 
-    int a = fix_round(fix_mul(fix_int(2),fix_int(load_avg)));
-    int b = fix_round(fix_add(fix_int(a),fix_int(1)));
-    int c = fix_round(fix_div(fix_int(a),fix_int(b)));
-    int d = fix_round(fix_mul(fix_int(c),fix_int(previous_recent_cpu)));
-    int e = fix_round(fix_add(fix_int(d),fix_int(nice_value)));
+    int new_recent_cpu = fix_round(fix_add(fix_mul(fix_div(fix_mul(fix_int(2),fix_int(load_avg)),fix_add(fix_mul(fix_int(2),fix_int(load_avg)),fix_int(1))),fix_int(previous_recent_cpu)),fix_int(nice_value)));
 
-    all_list_thread->recent_cpu = e;
+    all_list_thread->recent_cpu = new_recent_cpu;
     
     thread_allelem = list_next(thread_allelem);
 	}
