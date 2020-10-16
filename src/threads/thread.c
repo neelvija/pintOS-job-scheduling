@@ -11,6 +11,8 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixedpoint.h"
+#include "../devices/timer.h"
 #include "lib/kernel/list.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -61,7 +63,6 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 bool thread_mlfqs;
 
 static void kernel_thread (thread_func *, void *aux);
-
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
@@ -71,6 +72,8 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+
+static int load_avg;
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -89,7 +92,7 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-
+  load_avg = 0; //initializes load_avg tp 0 on boot up 
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -118,6 +121,51 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
+void
+calculate_load_avg(void) {
+  fix_round(fix_mul(fix_int(load_avg),fix_int(100)));
+  int a= fix_round(fix_div(fix_mul(fix_int(load_avg),fix_int(59)), fix_int(60)));
+  int number_of_ready_threads = list_size(&ready_list)+1;
+  int b= fix_round(fix_div(fix_int(number_of_ready_threads), fix_int(60)));
+  load_avg = fix_round(fix_add(fix_int(a),fix_int(b)));
+}
+
+void
+calculate_recent_cpu(void) {
+  if (list_empty (&all_list)) return;
+  struct list_elem *thread_allelem =list_front (&all_list);
+  
+  while(thread_allelem != list_end(&all_list)){
+
+    struct thread *all_list_thread =list_entry (thread_allelem, struct thread, allelem);
+    int previous_recent_cpu = all_list_thread->recent_cpu;
+    int nice_value = all_list_thread->nice;
+ 	 
+    int a = fix_round(fix_mul(fix_int(2),fix_int(load_avg)));
+    int b = fix_round(fix_add(fix_int(a),fix_int(1)));
+    int c = fix_round(fix_div(fix_int(a),fix_int(b)));
+    int d = fix_round(fix_mul(fix_int(c),fix_int(previous_recent_cpu)));
+    int e = fix_round(fix_add(fix_int(d),fix_int(nice_value)));
+
+    all_list_thread->recent_cpu = e;
+    
+    thread_allelem = list_next(thread_allelem);
+	}
+}
+
+void
+recalculate_thread_priority(struct thread *t) {
+  
+  int new_priority = fix_trunc(fix_sub(fix_sub(fix_int(PRI_MAX),fix_div(fix_int(t->recent_cpu),fix_int(4))),fix_mul(fix_int(t->nice),fix_int(2))));
+  if(new_priority < PRI_MIN) new_priority = PRI_MIN;
+  if(new_priority > PRI_MAX) new_priority = PRI_MAX;
+  int previous_prio = t->priority;
+  t->priority = new_priority;
+  if(new_priority<previous_prio) {
+    thread_yield();
+  }
+}
+
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
@@ -135,6 +183,22 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  if(thread_mlfqs) {
+    if(t!=idle_thread){
+      t->recent_cpu = t->recent_cpu+1;
+    }
+    if(timer_ticks () % TIMER_FREQ == 0) {
+      enum intr_level old_level;
+      ASSERT (!intr_context ());
+      old_level = intr_disable ();
+      calculate_load_avg();
+      calculate_recent_cpu();
+      intr_set_level(old_level);
+    }
+    if(timer_ticks () % TIME_SLICE == 0) {
+      recalculate_thread_priority(t);
+    }
+  }
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
@@ -379,31 +443,33 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  struct thread *t = thread_current();
+  
+  t->nice = nice;
+  recalculate_thread_priority(t);
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  int load_avg_to_return = fix_round(fix_mul(fix_int(load_avg),fix_int(100)));
+  return load_avg_to_return;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  int recent_cpu_to_return = fix_round(fix_mul(fix_int(thread_current()->recent_cpu),fix_int(100)));
+  return recent_cpu_to_return;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -496,6 +562,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->old_priority = priority;
   t->priority_changed = false;
   t->requested_lock = NULL;
+  t->nice = 0;
+  t->recent_cpu = 0;
   sema_init (&t->sleep_started, 0);
   list_init(&t->acquired_lock_list);
   t->magic = THREAD_MAGIC;

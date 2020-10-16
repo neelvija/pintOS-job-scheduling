@@ -98,7 +98,8 @@ struct thread
     struct list acquired_lock_list;     // list of acquired locks
     struct lock *requested_lock;
     
-
+    int nice;
+    int recent_cpu;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 

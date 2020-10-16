@@ -32,18 +32,6 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-
-//static struct list all_locks_list;
-//static bool all_locks_list_initialised = false;
-
-// void 
-// init_lock_list()
-// {
-//   printf("2.1");
-//   list_init(&all_locks_list);
-//   printf("2.2");
-// }
-
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -205,31 +193,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
-  //lock->highest_priority = PRI_MIN;
-  // if(!all_locks_list_initialised) {
-  //  list_init(&all_locks_list); 
-  //  all_locks_list_initialised = true;
-  // }
-  // list_push_back(&all_locks_list, &lock->lock_elem);
 }
-
-
-// //sort all waiters list in all locks.
-// void 
-// resort_all_lock_list()
-// {
-
-//   if (list_empty (&all_locks_list)) return;
-//   struct list_elem *current_lock_elem =list_front (&all_locks_list);
-  
-//   while(current_lock_elem != list_end(&all_locks_list)){
-
-//     struct lock *current_lock =list_entry (current_lock_elem, struct lock, lock_elem);
-//     struct semaphore *current_semaphore = &current_lock->semaphore;
-//     list_sort(&current_semaphore->waiters, *value_less,NULL);
-//     current_lock_elem = list_next(current_lock_elem);
-// 	}
-// }
 
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
@@ -246,11 +210,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *current_thread = thread_current();
-  //if(lock->holder == NULL) {
-  //  lock->highest_priority = current_thread->priority;
-  //}
   struct lock *current_lock = lock;
-  //int i = 0;
   for(int i=0;i<8;i++){
     if(current_lock->holder != NULL){
       if(current_lock->holder->priority < current_thread->priority ){
@@ -262,12 +222,6 @@ lock_acquire (struct lock *lock)
       } else {
         break;
       }
-      // if(lock->holder->requested_lock!=NULL) {
-      //   if(lock->holder->requested_lock->holder->priority<current_thread->priority) {
-      //     thread_set_donor_priority(current_thread->priority,lock->holder->requested_lock->holder);
-      //     lock->holder->requested_lock->highest_priority = current_thread->priority;
-      //   }
-      // }
     } else {
       break;
     }
@@ -335,9 +289,6 @@ lock_release (struct lock *lock)
     struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
     thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
   }
-  //lock->holder = NULL;
-  //sema_up (&lock->semaphore);
-  //thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
