@@ -96,11 +96,9 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-  //load_avg = 0; //initializes load_avg tp 0 on boot up 
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  //init_lock_list();
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -135,8 +133,6 @@ calculate_load_avg(void) {
 void
 calculate_recent_cpu(void) {
   if (list_empty (&all_list)) return;
-   //enum intr_level old_level;
-   //old_level = intr_disable ();
   struct list_elem *thread_allelem =list_front (&all_list);
   
   while(thread_allelem != list_end(&all_list)){
@@ -145,13 +141,11 @@ calculate_recent_cpu(void) {
     fixed_point_t previous_recent_cpu = all_list_thread->recent_cpu;
     int nice_value = all_list_thread->nice;
 
-    //fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_unscale(fix_scale(load_avg,2),fix_trunc(fix_scale(load_avg,2))+1),previous_recent_cpu),fix_int(nice_value));
     fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_div(fix_scale(load_avg,2),fix_add(fix_scale(load_avg,2),fix_int(1))),previous_recent_cpu),fix_int(nice_value));
     all_list_thread->recent_cpu = new_recent_cpu;
     
     thread_allelem = list_next(thread_allelem);
 	}
-  //intr_set_level(old_level);
 }
 
 void
@@ -162,9 +156,6 @@ recalculate_thread_priority(struct thread *t) {
   if(new_priority > PRI_MAX) new_priority = PRI_MAX;
   
   t->priority = new_priority;
-  //if(new_priority<previous_prio) {
-    //intr_yield_on_return ();
-  //}
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -190,13 +181,7 @@ thread_tick (void)
     } 
     if(timer_ticks () % TIMER_FREQ == 0) {
       calculate_load_avg();
-      //if(t!=idle_thread){
-      //enum intr_level old_level;
-      //ASSERT (!intr_context ());
-      //old_level = intr_disable ();
       calculate_recent_cpu();
-      //intr_set_level(old_level);
-      //}
     }
     if(timer_ticks () % TIME_SLICE == 0) {
       recalculate_thread_priority(t);

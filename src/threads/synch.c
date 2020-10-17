@@ -209,32 +209,28 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *current_thread = thread_current();
-  //if(!isMlfqs()) {
-    struct lock *current_lock = lock;
-    for(int i=0;i<8;i++){
-      if(current_lock->holder != NULL){
-        if(current_lock->holder->priority < current_thread->priority ){
-          thread_set_donor_priority(current_thread->priority,current_lock->holder);
-          current_lock->highest_priority = current_thread->priority;
-        }
-        if(current_lock->holder->requested_lock!=NULL) {
-          current_lock = current_lock->holder->requested_lock;
-        } else {
-          break;
-        }
+  struct lock *current_lock = lock;
+  for(int i=0;i<8;i++){
+    if(current_lock->holder != NULL){
+      if(current_lock->holder->priority < current_thread->priority ){
+        thread_set_donor_priority(current_thread->priority,current_lock->holder);
+        current_lock->highest_priority = current_thread->priority;
+      }
+      if(current_lock->holder->requested_lock!=NULL) {
+        current_lock = current_lock->holder->requested_lock;
       } else {
         break;
       }
+    } else {
+      break;
     }
-    current_thread->requested_lock = lock;
-  //}
+  }
+  current_thread->requested_lock = lock;
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  //if(!isMlfqs()) {
-    current_thread->requested_lock = NULL;
-    lock->highest_priority = thread_current()->priority;
-    list_push_back(&current_thread->acquired_lock_list, &lock->lock_elem);
-  //}
+  current_thread->requested_lock = NULL;
+  lock->highest_priority = thread_current()->priority;
+  list_push_back(&current_thread->acquired_lock_list, &lock->lock_elem);
 }
 
 
@@ -284,17 +280,15 @@ lock_release (struct lock *lock)
   
   lock->holder = NULL;
   sema_up(&lock->semaphore); 
-  //if(!isMlfqs()){
-    struct thread *current_thread = thread_current(); 
-    list_remove(&lock->lock_elem);
-    if(list_empty(&current_thread->acquired_lock_list)) {
-      thread_set_donor_priority(current_thread->old_priority,current_thread);
-      current_thread->priority_changed = false;
-    } else {  
-      struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
-      thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
-    }
-  //}
+  struct thread *current_thread = thread_current(); 
+  list_remove(&lock->lock_elem);
+  if(list_empty(&current_thread->acquired_lock_list)) {
+    thread_set_donor_priority(current_thread->old_priority,current_thread);
+    current_thread->priority_changed = false;
+  } else {  
+    struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
+    thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -304,10 +298,6 @@ bool
 lock_held_by_current_thread (const struct lock *lock) 
 {
   ASSERT (lock != NULL);
-  //bool result = (lock->holder == thread_current ())? true : false;
-  //if(!result) {
-  //  printf("[%s : %s]",lock->holder->name, thread_current()->name );
-  //}
   return lock->holder == thread_current ();
 }
 
