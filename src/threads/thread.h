@@ -98,10 +98,10 @@ struct thread
     int64_t wakeup_tick;                /* wake up time for sleeping thread */
     struct list_elem sleeping_elem;     /* elem for sleeping list */
     struct list acquired_lock_list;     // list of acquired locks
-    struct lock *requested_lock;
+    struct lock *requested_lock;        /* pointer to lock that thread is waiting for */
     
-    int nice;
-    fixed_point_t recent_cpu;
+    int nice;                           /* niceness of thread */
+    fixed_point_t recent_cpu;           /* recent cpu utilisation of thread */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -137,8 +137,6 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
-
-bool isMlfqs(void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

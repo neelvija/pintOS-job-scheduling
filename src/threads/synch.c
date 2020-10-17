@@ -306,7 +306,7 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
-    int priority;
+    int priority;                       /* priority for each semaphore_elem */
   };
 /* Returns true if value A is less than value B, false
    otherwise. */

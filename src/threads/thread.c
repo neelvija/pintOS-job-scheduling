@@ -75,10 +75,6 @@ static tid_t allocate_tid (void);
 
 static fixed_point_t load_avg;
 
-bool isMlfqs(void) {
-  return thread_mlfqs;
-}
-
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
