@@ -129,13 +129,15 @@ void
 calculate_load_avg(void) {
   int number_of_ready_threads = list_size(&ready_list)+1;
   fixed_point_t prev_load = load_avg;
-  load_avg = fix_add(fix_unscale(fix_scale(load_avg,59), 60),fix_unscale(fix_int(number_of_ready_threads), 60));
+  load_avg = fix_add(fix_mul(fix_unscale(fix_int(59), 60),load_avg),fix_unscale(fix_int(number_of_ready_threads), 60));
 
 }
 
 void
 calculate_recent_cpu(void) {
   if (list_empty (&all_list)) return;
+   enum intr_level old_level;
+   old_level = intr_disable ();
   struct list_elem *thread_allelem =list_front (&all_list);
   
   while(thread_allelem != list_end(&all_list)){
@@ -144,11 +146,12 @@ calculate_recent_cpu(void) {
     fixed_point_t previous_recent_cpu = all_list_thread->recent_cpu;
     int nice_value = all_list_thread->nice;
 
-    fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_div(fix_scale(load_avg,2),fix_add(fix_scale(load_avg,2),fix_int(1))),previous_recent_cpu),fix_int(nice_value));
+    fixed_point_t new_recent_cpu = fix_add(fix_mul(fix_unscale(fix_scale(load_avg,2),fix_trunc(fix_scale(load_avg,2))+1),previous_recent_cpu),fix_int(nice_value));
     all_list_thread->recent_cpu = new_recent_cpu;
     
     thread_allelem = list_next(thread_allelem);
 	}
+  intr_set_level(old_level);
 }
 
 void
@@ -186,12 +189,12 @@ thread_tick (void)
       t->recent_cpu = fix_add(t->recent_cpu,fix_int(1));
     }
     if(timer_ticks () % TIMER_FREQ == 0) {
-      enum intr_level old_level;
+     
       //ASSERT (!intr_context ());
       calculate_load_avg();
-      old_level = intr_disable ();
+      //old_level = intr_disable ();
       calculate_recent_cpu();
-      intr_set_level(old_level);
+      //intr_set_level(old_level);
     }
     if(timer_ticks () % TIME_SLICE == 0) {
       recalculate_thread_priority(t);
