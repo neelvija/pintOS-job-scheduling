@@ -129,8 +129,7 @@ void
 calculate_load_avg(void) {
   int number_of_ready_threads = list_size(&ready_list)+1;
   fixed_point_t prev_load = load_avg;
-  load_avg = fix_add(fix_mul(fix_unscale(fix_int(59), 60),load_avg),fix_unscale(fix_int(number_of_ready_threads), 60));
-
+  load_avg = fix_add(fix_mul(fix_frac(59,60),load_avg),fix_scale(fix_inv(fix_int(60)),number_of_ready_threads));
 }
 
 void
@@ -161,7 +160,7 @@ recalculate_thread_priority(struct thread *t) {
   int new_priority = fix_trunc(fix_sub(fix_sub(fix_int(PRI_MAX),fix_unscale(t->recent_cpu,4)),fix_int(t->nice*2)));
   if(new_priority < PRI_MIN) new_priority = PRI_MIN;
   if(new_priority > PRI_MAX) new_priority = PRI_MAX;
-  int previous_prio = t->priority;
+  
   t->priority = new_priority;
   //if(new_priority<previous_prio) {
     //intr_yield_on_return ();
@@ -188,18 +187,21 @@ thread_tick (void)
   if(thread_mlfqs) {
     if(t!=idle_thread){
       t->recent_cpu = fix_add(t->recent_cpu,fix_int(1));
-    }
+    } 
     if(timer_ticks () % TIMER_FREQ == 0) {
-      enum intr_level old_level;
-      //ASSERT (!intr_context ());
       calculate_load_avg();
-      old_level = intr_disable ();
+      //if(t!=idle_thread){
+      //enum intr_level old_level;
+      //ASSERT (!intr_context ());
+      //old_level = intr_disable ();
       calculate_recent_cpu();
-      intr_set_level(old_level);
+      //intr_set_level(old_level);
+      //}
     }
     if(timer_ticks () % TIME_SLICE == 0) {
       recalculate_thread_priority(t);
     }
+   
   }
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
