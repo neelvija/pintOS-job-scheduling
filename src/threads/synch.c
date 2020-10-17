@@ -126,7 +126,6 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters) && sema->value <=0) {
     list_sort(&sema->waiters,*value_less,NULL);
     struct thread *thread_to_unblock = list_entry (list_pop_front (&sema->waiters),struct thread, elem);
-    thread_to_unblock->requested_lock = NULL;
     thread_unblock (thread_to_unblock);  
   }
     
@@ -210,7 +209,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *current_thread = thread_current();
-  if(!isMlfqs()) {
+  //if(!isMlfqs()) {
     struct lock *current_lock = lock;
     for(int i=0;i<8;i++){
       if(current_lock->holder != NULL){
@@ -228,14 +227,14 @@ lock_acquire (struct lock *lock)
       }
     }
     current_thread->requested_lock = lock;
-  }
+  //}
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  if(!isMlfqs()) {
+  //if(!isMlfqs()) {
     current_thread->requested_lock = NULL;
     lock->highest_priority = thread_current()->priority;
     list_push_back(&current_thread->acquired_lock_list, &lock->lock_elem);
-  }
+  //}
 }
 
 
@@ -285,7 +284,7 @@ lock_release (struct lock *lock)
   
   lock->holder = NULL;
   sema_up(&lock->semaphore); 
-  if(!isMlfqs()){
+  //if(!isMlfqs()){
     struct thread *current_thread = thread_current(); 
     list_remove(&lock->lock_elem);
     if(list_empty(&current_thread->acquired_lock_list)) {
@@ -295,7 +294,7 @@ lock_release (struct lock *lock)
       struct lock  *max_lock_elem = list_entry(list_max(&current_thread->acquired_lock_list,*max_lock_priority,NULL),struct lock,lock_elem);
       thread_set_donor_priority(max_lock_elem->highest_priority,current_thread);
     }
-  }
+  //}
 }
 
 /* Returns true if the current thread holds LOCK, false

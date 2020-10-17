@@ -459,7 +459,7 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  int load_avg_to_return = fix_round(fix_scale(load_avg,100));
+  int load_avg_to_return = fix_trunc(fix_scale(load_avg,100));
   return load_avg_to_return;
 }
 
@@ -467,7 +467,7 @@ thread_get_load_avg (void)
 int
 thread_get_recent_cpu (void) 
 {
-  int recent_cpu_to_return = fix_round(fix_scale(thread_current()->recent_cpu,100));
+  int recent_cpu_to_return = fix_trunc(fix_scale(thread_current()->recent_cpu,100));
   return recent_cpu_to_return;
 }
 
@@ -562,7 +562,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority_changed = false;
   t->requested_lock = NULL;
   //t->nice = 0;
-  //t->recent_cpu = 0;
+  t->recent_cpu = fix_int(0);
   sema_init (&t->sleep_started, 0);
   list_init(&t->acquired_lock_list);
   t->magic = THREAD_MAGIC;
